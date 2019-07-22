@@ -25,3 +25,18 @@ choco install powerbi -y
 Install-WindowsFeature AD-Domain-Services,FS-iSCSITarget-Server,Web-Server,Web-Mgmt-Tools,NET-Framework-Core,Failover-Clustering,Telnet-Client -IncludeManagementTools -IncludeAllSubFeature
 
 Set-TimeZone -Name "Eastern Standard Time"
+
+
+#https://www.mssqltips.com/sqlservertip/6017/build-docker-containers-with-external-storage-on-your-desktop/
+Install-Module SqlServer
+$releases = Invoke-RestMethod https://api.github.com/repos/microsoft/sql-server-samples/releases
+$BaksToDownload = ($releases | where {$_.name -eq 'AdventureWorks sample databases' -or $_.name -eq 'Wide World Importers sample database v1.0'}).assets |
+WHERE { $_.name -like 'AdventureWorksDW201*bak' -and $_.name -notlike '*EXT*' } |
+SELECT name, browser_download_url, size, updated_at
+ 
+FOREACH( $BakInfo in $BaksToDownload )
+{
+"$($BakInfo.name)";
+Invoke-WebRequest -Uri $BakInfo.browser_download_url -OutFile "C:\Program Files\Microsoft SQL Server\MSSQL14.MSSQLSERVER\MSSQL\Backup\$($BakInfo.name)"
+Restore-SqlDatabase -ServerInstance 'localhost' -Credential (Get-Credential sa) -BackupFile "C:\Program Files\Microsoft SQL Server\MSSQL14.MSSQLSERVER\MSSQL\Backup\$($BakInfo.name)" -Database ($BakInfo.name -replace '.bak') -AutoRelocateFile
+}
